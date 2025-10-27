@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>WS Test</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+</head>
+<body>
+  <h1>WebSocket Test (STOMP)</h1>
+  <p>
+    Game ID: <input id="gameId" value="1" />
+    <button id="btnSub">Subscribe</button>
+    <button id="btnUnsub">Unsubscribe</button>
+  </p>
+  <pre id="log" style="border:1px solid #ccc; padding:8px; height:360px; overflow:auto;"></pre>
+
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <script>
+    const logEl = document.getElementById('log');
+    const log = (msg) => { logEl.textContent += msg + "\n"; logEl.scrollTop = logEl.scrollHeight; };
+
+    let stompClient = null;
+    let subMoves = null;
+    let subEvents = null;
+
+    function connect() {
+      return new Promise((resolve, reject) => {
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.debug = () => {};
+        stompClient.connect({}, () => { log('Connected'); resolve(); }, (err) => { log('Error: ' + err); reject(err); });
+      });
+    }
+
+    async function subscribe() {
+      const id = document.getElementById('gameId').value.trim();
+      if (!stompClient) await connect();
+
+      // unsubscribe vorher
+      if (subMoves) { subMoves.unsubscribe(); subMoves = null; }
+      if (subEvents) { subEvents.unsubscribe(); subEvents = null; }
+
+      const destMoves = `/topic/game/${id}/moves`;
+      const destEvents = `/topic/game/${id}/events`;
+
+      log('Subscribing to ' + destMoves);
+      subMoves = stompClient.subscribe(destMoves, (frame) => {
+        log('MOVE: ' + frame.body);
+      });
+
+      log('Subscribing to ' + destEvents);
+      subEvents = stompClient.subscribe(destEvents, (frame) => {
+        log('EVENT: ' + frame.body);
+      });
+    }
+
+    function unsubscribe() {
+      if (subMoves) { subMoves.unsubscribe(); subMoves = null; }
+      if (subEvents) { subEvents.unsubscribe(); subEvents = null; }
+      log('Unsubscribed');
+    }
+
+    document.getElementById('btnSub').addEventListener('click', subscribe);
+    document.getElementById('btnUnsub').addEventListener('click', unsubscribe);
+  </script>
+</body>
+</html>
