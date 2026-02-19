@@ -1,0 +1,2 @@
+ALTER TABLE master_games
+  MODIFY COLUMN result VARCHAR(7) DEFAULT NULL;
