@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  db:
+    image: mariadb:11.4
+    container_name: chess_db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-chess}
+      MARIADB_USER: ${DB_USER:-chess}
+      MARIADB_PASSWORD: ${DB_PASS:-chesspass}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASS:-rootpass}
+      TZ: Europe/Berlin
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3307:3306"   
+    networks: [chess_net]
+
+  backend:
+    build:
+      context: ../workspace/chess-backend
+      dockerfile: Dockerfile
+    container_name: chess_backend
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      TZ: Europe/Berlin
+      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/${DB_NAME:-chess}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-chess}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASS:-chesspass}
+    networks: [chess_net]
+
+  frontend:
+    build:
+      context: ../workspace/chess-frontend
+    container_name: chess_frontend
+    restart: unless-stopped
+    depends_on: [backend]
+    ports:
+      - "8081:80"   # http://localhost:8081
+    networks: [chess_net]
+
+volumes:
+  db_data:
+
+networks:
+  chess_net:
+    driver: bridge
